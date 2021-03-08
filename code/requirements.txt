@@ -1,0 +1,4 @@
+flask_mysqldb
+flask
+gunicorn
+prometheus-flask-exporter

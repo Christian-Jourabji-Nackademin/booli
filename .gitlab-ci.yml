@@ -1,0 +1,87 @@
+image: docker:latest
+stages:
+  - build
+  - deployint
+  - test
+  - deploy
+  - prodtest
+
+## For bulding merge request
+##
+###
+mergeRequestBuild:
+  stage: build
+  image: docker:latest
+  only:
+    - merge_request
+  services:
+  - docker:dind
+  script:
+    #Lets fix the name of the tag so we dont need to make new tag for every merge commit
+    - export DOCKER_TAG=$(echo $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME-$CI_PROJECT_NAME  | awk '{print tolower($0)}' | sed 's/[\/.]/-/g')
+    - 'echo $DOCKER_TAG'
+    - 'docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN git.booli.se:4567'
+    - 'docker build -t git.booli.se:4567/booli/$CI_PROJECT_NAME:$DOCKER_TAG . --build-arg CI_COMMIT_SHORT_SHA'
+    - 'docker push git.booli.se:4567/booli/$CI_PROJECT_NAME:$DOCKER_TAG' 
+
+mergeRequestDeploy:
+  stage: deployint
+  only:
+    - merge_requests
+  variables:
+    DEPLOYNAME: $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME-$CI_PROJECT_NAME
+    GITSHA: $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME-$CI_PROJECT_NAME
+    HELMCHART: $CI_PROJECT_NAME
+    CI_MERGE_REQUEST_PROJECT_ID: $CI_PROJECT_ID
+    CI_MERGE_REQUEST_IID: $MERGE_REQUEST_IID
+  trigger: booli/pipeline-merge
+
+
+###
+#
+# Build and deploy for master
+#
+build-docker:
+  stage: build
+  image: docker:latest
+  only:
+    - master
+  services:
+  - docker:dind
+  script:
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN git.booli.se:4567
+    - docker build -t git.booli.se:4567/booli/$CI_PROJECT_NAME:$CI_COMMIT_SHORT_SHA . --build-arg CI_COMMIT_SHORT_SHA
+    - docker push git.booli.se:4567/booli/$CI_PROJECT_NAME:$CI_COMMIT_SHORT_SHA
+    - echo "Tag master build to master"
+    - docker tag git.booli.se:4567/booli/$CI_PROJECT_NAME:$CI_COMMIT_SHORT_SHA git.booli.se:4567/booli/$CI_PROJECT_NAME:latest
+    - docker push git.booli.se:4567/booli/$CI_PROJECT_NAME:latest
+
+deployToIntTrigger:
+  only:
+    - master
+  variables:
+    DEPLOYNAME: $CI_PROJECT_NAME
+    GITSHA: $CI_COMMIT_SHORT_SHA
+  stage: deployint
+  trigger: booli/pipeline
+
+sonarqube-check:
+  stage: test
+  image:
+    name: sonarsource/sonar-scanner-cli:latest
+    entrypoint: [""]
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"  # Defines the location of the analysis task cache
+    GIT_DEPTH: "0"  # Tells git to fetch all the branches of the project, required by the analysis task
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
+  script:
+    - sonar-scanner -Dsonar.projectKey=$CI_PROJECT_NAME 
+  allow_failure: true
+  only:
+    - merge_requests
+    - master
+    - develop  
+
