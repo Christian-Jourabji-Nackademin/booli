@@ -9,16 +9,13 @@ import urllib.request
 app = Flask(__name__)
 metrics = PrometheusMetrics(app)
 
-
-mysql_host = os.environ['MYSQL_HOST']
-mysql_user = os.environ['MYSQL_USER']
-mysql_password = os.environ['MYSQL_ROOT_PASSWORD']
-mysql_db = os.environ['MYSQL_DATABASE']
-
+app.config['MYSQL_HOST'] = os.environ['MYSQL_HOST']
+app.config['MYSQL_USER'] = os.environ['MYSQL_USER']
+app.config['MYSQL_ROOT_PASSWORD'] = os.environ['MYSQL_ROOT_PASSWORD']
+app.config['MYSQL_DATABASE'] = os.environ['MYSQL_DATABASE']
 
 
 mysql = MySQL(app)
-
 
 
 @app.route('/')
