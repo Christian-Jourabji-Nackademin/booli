@@ -1,9 +1,8 @@
 from flask_mysqldb import MySQL
-from flask import Flask,render_template
+from flask import Flask,render_template,request
 from prometheus_flask_exporter import PrometheusMetrics
 import os
 import urllib.request
-
 
 
 app = Flask(__name__)
@@ -11,8 +10,8 @@ metrics = PrometheusMetrics(app)
 
 app.config['MYSQL_HOST'] = os.environ['MYSQL_HOST']
 app.config['MYSQL_USER'] = os.environ['MYSQL_USER']
-app.config['MYSQL_ROOT_PASSWORD'] = os.environ['MYSQL_ROOT_PASSWORD']
-app.config['MYSQL_DATABASE'] = os.environ['MYSQL_DATABASE']
+app.config['MYSQL_PASSWORD'] = os.environ['MYSQL_PASSWORD']
+app.config['MYSQL_DB'] = os.environ['MYSQL_DATABASE']
 
 
 mysql = MySQL(app)
@@ -45,19 +44,20 @@ def ready():
 
 
 
+
 @app.route('/status/<url>')
 def status(url):
+    host = request.args.get('host')
     status = urllib.request.urlopen(url).getcode()
     if status == 200 :
         print('We are all good')
     else:
         print("Site is down")
 
+    return '''
+              <h1>The website value is: {}'''.format(host, status)
 
-# /metrics endpint is alive and send prometheus metrics
-#  
-#
-#
+
 
 
 if __name__ == "__main__":
