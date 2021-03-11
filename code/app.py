@@ -1,3 +1,4 @@
+from ssl import match_hostname
 from flask_mysqldb import MySQL
 from flask import Flask,render_template,request
 from prometheus_flask_exporter import PrometheusMetrics
@@ -44,21 +45,14 @@ def ready():
 
 
 
-
-@app.route('/status/<url>')
-def status(url):
+@app.route('/status/' ,methods = [ 'GET'])
+def status():
     host = request.args.get('host')
-    status = urllib.request.urlopen(url).getcode()
-    if status == 200 :
-        print('We are all good')
-    else:
-        print("Site is down")
-
-    return '''
-              <h1>The website value is: {}'''.format(host, status)
-
+    return "your name is {0}".format(host)
+    
 
 
 
 if __name__ == "__main__":
     app.run(debug=True)
+
